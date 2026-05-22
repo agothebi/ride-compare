@@ -1,0 +1,100 @@
+# Project Rules — RideCompare PWA
+
+## What this is
+A Progressive Web App whose single job is to get the user from "I need a ride"
+to a pre-filled Uber/Lyft booking in the fewest possible taps. It does NOT show
+prices. It builds deep links that open each rideshare app with pickup
+and destination already filled in. The price comparison happens in the native
+apps after they open pre-filled — our value is eliminating the typing.
+
+## Stack (do not change without being asked)
+- Vite + React + TypeScript
+- vite-plugin-pwa for manifest + service worker
+- Tailwind CSS for styling
+- Google Maps JavaScript API: Places Autocomplete + Geocoding + a route preview
+- Deployed to Vercel; one serverless function in /api to proxy Google calls
+- No state-management library (Redux/Zustand/etc.) — React state is enough
+- No extra dependencies without asking first
+
+## Why TypeScript
+The core data model is location bundles {lat, lng, address} flowing through
+builder functions into deep links. The app's single most likely bug is a
+malformed/half-populated location object reaching a link builder (e.g. missing
+the address string Uber requires, or mixing up Lyft's destination[] vs Uber's
+dropoff[]). Types catch this at compile time instead of on the phone. Define a
+Location type and use it everywhere.
+
+## Security (hard rules)
+- The Google Maps API key NEVER appears in client code. It lives only in the
+  Vercel serverless function (/api), read from an environment variable.
+- No analytics, no tracking, no third-party scripts beyond Google Maps.
+- Favorites and recent destinations are stored ON-DEVICE only (localStorage).
+  Never send the user's location history anywhere.
+
+## Core data type (use everywhere)
+```ts
+type Location = {
+  lat: number;
+  lng: number;
+  address: string;        // formatted street address from Places — REQUIRED
+};
+type Favorite = Location & { label: string };  // e.g. "Home", "Work"
+```
+A location is only valid once it has all three fields. Favorites add a label.
+
+## Architecture rules
+- Deep link construction is done in PURE FUNCTIONS that take a Location for
+  pickup and a Location for dropoff and return a URL string. One per service.
+- Services are an array of objects so adding a service later is trivial:
+  { name, brandColor, buildUrl(pickup, dropoff) }. No hardcoded two-service
+  assumptions scattered through the UI.
+- URL-encode every value placed into a deep link.
+- Build in vertical slices: each step must run and be testable on a real phone
+  before moving on. Do not scaffold the whole app at once.
+
+## The address-entry pattern (the heart of the UX)
+A single focused field does double duty:
+- When focused and EMPTY: show a dropdown list, in this order —
+  1. Favorites (heart icon) — Home, Work, custom
+  2. Recents (clock icon) — last ~6 destinations
+- The moment the user TYPES: replace that list with Google Places autocomplete
+  predictions.
+- Favorites and recents must be visually distinct (heart vs clock icon) so the
+  groups parse at a glance.
+
+## Favorites creation (handle the address requirement correctly)
+- A favorite is created THROUGH Places autocomplete, never from a bare map tap.
+  Flow: tap heart -> small sheet -> type a label + search address via
+  autocomplete -> save the full {label, lat, lng, address} bundle.
+- Reason: we need the formatted street address string (for Uber's required
+  dropoff[formatted_address]) AND coordinates (for Lyft). A map-tap gives
+  coordinates with no reliable street address. Autocomplete-in, full-bundle-out.
+- Favorites are NOT shown on the main page — only inside the field's dropdown.
+
+## Pickup defaults
+- Pickup defaults to current location via the Geolocation API on load, silently.
+  The user usually never touches the start field.
+- Current location gives lat/lng but NO street address. That's fine:
+  - Uber: use pickup=my_location (no address needed).
+  - Lyft: pickup lat/lng alone is fine.
+  We therefore never need to reverse-geocode. Destination always has an address
+  (it comes from autocomplete or a favorite), which is the only place Uber
+  requires one.
+
+## Confirmation map (after input, not before)
+- After both pickup and dropoff are set, show a route PREVIEW map: draw the
+  polyline pickup -> dropoff, fit bounds, done. Its purpose is letting the user
+  confirm Google picked the right place before launching a ride.
+- The two service buttons appear instantly alongside the preview — momentum.
+- Keep it a PREVIEW: no draggable pins, no live traffic, no turn-by-turn. It is
+  a confidence check, not the primary navigation surface. Speed beats decoration.
+
+## Efficiency target
+- Best case: 2 taps (tap a favorite/recent chip in the dropdown -> tap a service).
+- Worst case: type a destination, glance at the route preview, tap a service.
+
+## Code style
+- Keep components small and readable. Prefer clarity over cleverness.
+- Use window.location.href or a real <a href> to fire deep links — NOT
+  window.open() (it can spawn an in-app browser tab that handles app schemes
+  poorly inside a standalone PWA).
