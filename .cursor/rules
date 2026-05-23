@@ -11,8 +11,8 @@ apps after they open pre-filled — our value is eliminating the typing.
 - Vite + React + TypeScript
 - vite-plugin-pwa for manifest + service worker
 - Tailwind CSS for styling
-- Google Maps JavaScript API: Places Autocomplete + Geocoding + a route preview
-- Deployed to Vercel; one serverless function in /api to proxy Google calls
+- Google Maps JavaScript API: Places Autocomplete + route preview (client-side)
+- Local dev: http://localhost:5172 (Vite `server.port: 5172`, `strictPort: true`)
 - No state-management library (Redux/Zustand/etc.) — React state is enough
 - No extra dependencies without asking first
 
@@ -25,8 +25,12 @@ dropoff[]). Types catch this at compile time instead of on the phone. Define a
 Location type and use it everywhere.
 
 ## Security (hard rules)
-- The Google Maps API key NEVER appears in client code. It lives only in the
-  Vercel serverless function (/api), read from an environment variable.
+- Google Maps uses one **browser** API key (Maps JavaScript API + Places).
+  Restrict it in Google Cloud: **Websites** referrer `http://localhost:5172/*`
+  (plus production domain when deployed) and API restrictions to those APIs only.
+- Key lives in env as `VITE_GOOGLE_MAPS_API_KEY` — read in code ONLY as
+  `import.meta.env.VITE_GOOGLE_MAPS_API_KEY`. Never hardcode a literal key string.
+- `.env` is gitignored; commit `.env.example` with a placeholder only.
 - No analytics, no tracking, no third-party scripts beyond Google Maps.
 - Favorites and recent destinations are stored ON-DEVICE only (localStorage).
   Never send the user's location history anywhere.
@@ -70,6 +74,7 @@ A single focused field does double duty:
   dropoff[formatted_address]) AND coordinates (for Lyft). A map-tap gives
   coordinates with no reliable street address. Autocomplete-in, full-bundle-out.
 - Favorites are NOT shown on the main page — only inside the field's dropdown.
+- Max **6 favorites** total (Home, Work, and custom all count toward the cap).
 
 ## Pickup defaults
 - Pickup defaults to current location via the Geolocation API on load, silently.
