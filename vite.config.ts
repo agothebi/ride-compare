@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+/// <reference types="vitest/config" />
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -47,5 +48,9 @@ export default defineConfig({
   preview: {
     port: 5172,
     strictPort: true,
+  },
+  test: {
+    environment: "jsdom",
+    include: ["tests/**/*.test.ts"],
   },
 });
