@@ -98,7 +98,7 @@ is the only spot Uber requires one. So we never reverse-geocode.
 - Code: `import.meta.env.VITE_GOOGLE_MAPS_API_KEY` only — never a literal in source.
 - GCP: Application restriction **Websites** → `http://localhost:5172/*` for local dev.
   Add production `https://your-domain.com/*` when deployed. API restriction: Maps
-  JavaScript API + Places API only.
+  JavaScript API + Places API + Directions API (required for route preview).
 - Local dev URL: `http://localhost:5172` (Vite port 5172, `strictPort: true`).
 
 ## PWA reminders

@@ -8,11 +8,25 @@ type RoutePreviewMapProps = {
   destination: Location;
 };
 
+function routePreviewErrorMessage(
+  google: typeof globalThis.google,
+  routeStatus?: string,
+): string {
+  if (routeStatus === google.maps.DirectionsStatus.REQUEST_DENIED) {
+    return "Route preview blocked — enable Directions API on your Google Maps key";
+  }
+  if (routeStatus === google.maps.DirectionsStatus.ZERO_RESULTS) {
+    return "No driving route found";
+  }
+  return "Could not load route preview";
+}
+
 export function RoutePreviewMap({ pickup, destination }: RoutePreviewMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -20,6 +34,7 @@ export function RoutePreviewMap({ pickup, destination }: RoutePreviewMapProps) {
     if (!container) return;
 
     setStatus("loading");
+    setErrorMessage(null);
 
     void (async () => {
       try {
@@ -62,6 +77,14 @@ export function RoutePreviewMap({ pickup, destination }: RoutePreviewMapProps) {
           (result, routeStatus) => {
             if (cancelled) return;
             if (routeStatus !== google.maps.DirectionsStatus.OK || !result) {
+              const message = routePreviewErrorMessage(google, routeStatus);
+              if (import.meta.env.DEV) {
+                console.warn("[RoutePreviewMap] Directions request failed", {
+                  routeStatus,
+                  message,
+                });
+              }
+              setErrorMessage(message);
               setStatus("error");
               return;
             }
@@ -69,8 +92,13 @@ export function RoutePreviewMap({ pickup, destination }: RoutePreviewMapProps) {
             setStatus("ready");
           },
         );
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          const message = "Maps failed to load";
+          if (import.meta.env.DEV) {
+            console.warn("[RoutePreviewMap] Maps load failed", error);
+          }
+          setErrorMessage(message);
           setStatus("error");
         }
       }
@@ -96,7 +124,7 @@ export function RoutePreviewMap({ pickup, destination }: RoutePreviewMapProps) {
         ) : null}
         {status === "error" ? (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 px-4 text-center text-[15px] text-text-muted">
-            Could not load route preview
+            {errorMessage ?? "Could not load route preview"}
           </div>
         ) : null}
       </div>

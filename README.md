@@ -7,7 +7,7 @@ Dark-mode PWA that opens Uber or Lyft with pickup and destination pre-filled via
 1. Copy `.env.example` to `.env` and set `VITE_GOOGLE_MAPS_API_KEY`.
 2. In Google Cloud Console, restrict the key:
    - **Websites:** `http://localhost:5172/*` (and your production domain when deployed)
-   - **APIs:** Maps JavaScript API + Places API only
+   - **APIs:** Maps JavaScript API + Places API + Directions API
 3. `npm install`
 4. `npm run dev` → http://localhost:5172
 
