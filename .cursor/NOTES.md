@@ -84,6 +84,8 @@ street address).
 Geolocation gives lat/lng but no address. That's fine:
 - Uber pickup: use pickup=my_location.
 - Lyft pickup: lat/lng alone works.
+- Last successful pickup coords are cached on-device for 24h (`ridecompare:last-pickup`)
+  so the PWA can show "Current location" immediately on reopen while GPS refreshes.
 Destination always carries an address (from autocomplete or a favorite), which
 is the only spot Uber requires one. So we never reverse-geocode.
 
